@@ -74,6 +74,6 @@ jobs:
         with:
           deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
           working-directory: astro_project
-          deploy_type: ${{ env.DEPLOY_TYPE }}
+          deploy-type: ${{ env.DEPLOY_TYPE }}
         env:
           ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
