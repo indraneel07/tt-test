@@ -7,7 +7,7 @@ on:
         description: "DEV | QA | UAT | PROD"
         required: true
       deploy_type:
-        description: "dags_only or image_and_dags"
+        description: "dags-only or image-and-dags"
         required: true
 
 jobs:
@@ -73,7 +73,8 @@ jobs:
         uses: astronomer/deploy-action@v0.10.1
         with:
           deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
-          root-folder: astro_project
+          root-folder: astro_project/
           deploy-type: ${{ env.DEPLOY_TYPE }}
+          force: true
         env:
           ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
