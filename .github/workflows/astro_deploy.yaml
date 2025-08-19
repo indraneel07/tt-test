@@ -42,17 +42,17 @@ jobs:
           # dags
           DAGS_MANIFEST="dags/dags_environment/${ENV_GROUP}/dags_${ENV_LC}.yaml"
           mkdir -p astro_project/dags
-          yq e '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "$f" astro_project/dags/; done
+          yq -r '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "$f" astro_project/dags/; done
 
           # include
           INCLUDE_MANIFEST="include/include_environment/${ENV_GROUP}/include_${ENV_LC}.yaml"
           mkdir -p astro_project/include
-          yq e '.[]' "$INCLUDE_MANIFEST" | while IFS= read -r pkg; do cp -r "include/$pkg" astro_project/include/; done
+          yq -r '.[]' "$INCLUDE_MANIFEST" | while IFS= read -r pkg; do cp -r "include/$pkg" astro_project/include/; done
 
           # plugins
           PLUGINS_MANIFEST="plugins/plugins_environment/${ENV_GROUP}/plugins_${ENV_LC}.yaml"
           mkdir -p astro_project/plugins
-          yq e '.[]' "$PLUGINS_MANIFEST" | while IFS= read -r plg; do cp -r "plugins/$plg" astro_project/plugins/; done
+          yq -r '.[]' "$PLUGINS_MANIFEST" | while IFS= read -r plg; do cp -r "plugins/$plg" astro_project/plugins/; done
 
           # dockerfile / packages / requirements (only for image_and_dags)
           if [[ "$DEPLOY_TYPE" == "image_and_dags" ]]; then
