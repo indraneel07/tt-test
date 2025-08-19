@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       env:
-        description: "dev | qa | uat | prod"
+        description: "DEV | QA | UAT | PROD"
         required: true
       deploy_type:
         description: "dags_only or image_and_dags"
@@ -16,8 +16,8 @@ jobs:
     env:
       ENV: ${{ inputs.env }}
       DEPLOY_TYPE: ${{ inputs.deploy_type }}
-      ASTRO_API_TOKEN: ${{ secrets[format('ASTRO_API_TOKEN_{0}', upper(inputs.env))] }}
-      ASTRO_DEPLOYMENT_ID: ${{ vars[format('ASTRO_DEPLOYMENT_ID_{0}', upper(inputs.env))] }}
+      ASTRO_API_TOKEN: ${{ secrets[format('ASTRO_API_TOKEN_{0}', inputs.env)] }}
+      ASTRO_DEPLOYMENT_ID: ${{ vars[format('ASTRO_DEPLOYMENT_ID_{0}', inputs.env)] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -30,31 +30,35 @@ jobs:
           pip install yq
 
       - name: Build astro_project
+        shell: bash
         run: |
           set -e
-          if [[ "$ENV" == "dev" || "$ENV" == "qa" ]]; then ENV_GROUP="non-prod"; else ENV_GROUP="prod"; fi
+          # lowercase env for file paths
+          ENV_LC=$(echo "$ENV" | tr '[:upper:]' '[:lower:]')
+
+          if [[ "$ENV_LC" == "dev" || "$ENV_LC" == "qa" ]]; then ENV_GROUP="non-prod"; else ENV_GROUP="prod"; fi
           rm -rf astro_project && mkdir -p astro_project
 
           # dags
-          DAGS_MANIFEST="dags/dags_environment/${ENV_GROUP}/dags_${ENV}.yaml"
+          DAGS_MANIFEST="dags/dags_environment/${ENV_GROUP}/dags_${ENV_LC}.yaml"
           mkdir -p astro_project/dags
           yq e '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "$f" astro_project/dags/; done
 
           # include
-          INCLUDE_MANIFEST="include/include_environment/${ENV_GROUP}/include_${ENV}.yaml"
+          INCLUDE_MANIFEST="include/include_environment/${ENV_GROUP}/include_${ENV_LC}.yaml"
           mkdir -p astro_project/include
           yq e '.[]' "$INCLUDE_MANIFEST" | while IFS= read -r pkg; do cp -r "include/$pkg" astro_project/include/; done
 
           # plugins
-          PLUGINS_MANIFEST="plugins/plugins_environment/${ENV_GROUP}/plugins_${ENV}.yaml"
+          PLUGINS_MANIFEST="plugins/plugins_environment/${ENV_GROUP}/plugins_${ENV_LC}.yaml"
           mkdir -p astro_project/plugins
           yq e '.[]' "$PLUGINS_MANIFEST" | while IFS= read -r plg; do cp -r "plugins/$plg" astro_project/plugins/; done
 
-          # dockerfile / packages / requirements (only for FULL_DEPLOY)
-          if [[ "$DEPLOY_TYPE" == "FULL_DEPLOY" ]]; then
-            cp "dockerfiles/${ENV_GROUP}/Dockerfile_${ENV}"        astro_project/Dockerfile
-            cp "packages/${ENV_GROUP}/packages_${ENV}.txt"         astro_project/packages.txt
-            cp "requirements/${ENV_GROUP}/requirements_${ENV}.txt" astro_project/requirements.txt
+          # dockerfile / packages / requirements (only for image_and_dags)
+          if [[ "$DEPLOY_TYPE" == "image_and_dags" ]]; then
+            cp "dockerfiles/${ENV_GROUP}/Dockerfile_${ENV_LC}"        astro_project/Dockerfile
+            cp "packages/${ENV_GROUP}/packages_${ENV_LC}.txt"         astro_project/packages.txt
+            cp "requirements/${ENV_GROUP}/requirements_${ENV_LC}.txt" astro_project/requirements.txt
           fi
 
           # .astro (always needed)
@@ -65,6 +69,6 @@ jobs:
         with:
           deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
           working-directory: astro_project
-          deploy-type: ${{ env.DEPLOY_TYPE }}
+          dags-only: ${{ env.DEPLOY_TYPE }}
         env:
           ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
