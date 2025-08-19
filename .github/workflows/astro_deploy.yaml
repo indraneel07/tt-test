@@ -73,7 +73,7 @@ jobs:
         uses: astronomer/deploy-action@v0.10.1
         with:
           deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
-          working-directory: astro_project
+          root-folder: astro_project
           deploy-type: ${{ env.DEPLOY_TYPE }}
         env:
           ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
