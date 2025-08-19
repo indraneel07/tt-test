@@ -14,7 +14,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      ENV: ${{ inputs.env }}
+      ENV: ${{ inputs.env }}    # UPPERCASE for secrets/vars
       DEPLOY_TYPE: ${{ inputs.deploy_type }}
       ASTRO_API_TOKEN: ${{ secrets[format('ASTRO_API_TOKEN_{0}', inputs.env)] }}
       ASTRO_DEPLOYMENT_ID: ${{ vars[format('ASTRO_DEPLOYMENT_ID_{0}', inputs.env)] }}
@@ -64,11 +64,16 @@ jobs:
           # .astro (always needed)
           if [ -d ".astro" ]; then cp -r .astro astro_project/.astro; else mkdir -p astro_project/.astro; fi
 
+      - name: Show staged astro_project
+        run: |
+          echo "===== astro_project contents ====="
+          find astro_project -maxdepth 3 -print | sort
+
       - name: Deploy to Astro
         uses: astronomer/deploy-action@v0.10.1
         with:
           deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
           working-directory: astro_project
-          dags-only: ${{ env.DEPLOY_TYPE }}
+          deploy_type: ${{ env.DEPLOY_TYPE }}
         env:
           ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
