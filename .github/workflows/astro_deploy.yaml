@@ -42,7 +42,7 @@ jobs:
           # dags
           DAGS_MANIFEST="dags/dags_environment/${ENV_GROUP}/dags_${ENV_LC}.yaml"
           mkdir -p astro_project/dags
-          yq -r '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "$f" astro_project/dags/; done
+          yq -r '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "dags/$f" astro_project/dags/; done
 
           # include
           INCLUDE_MANIFEST="include/include_environment/${ENV_GROUP}/include_${ENV_LC}.yaml"
