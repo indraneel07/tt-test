@@ -54,8 +54,8 @@ jobs:
           mkdir -p astro_project/plugins
           yq -r '.[]' "$PLUGINS_MANIFEST" | while IFS= read -r plg; do cp -r "plugins/$plg" astro_project/plugins/; done
 
-          # dockerfile / packages / requirements (only for image_and_dags)
-          if [[ "$DEPLOY_TYPE" == "image_and_dags" ]]; then
+          # dockerfile / packages / requirements (only for image-and-dags)
+          if [[ "$DEPLOY_TYPE" == "image-and-dags" ]]; then
             cp "dockerfiles/${ENV_GROUP}/Dockerfile_${ENV_LC}"        astro_project/Dockerfile
             cp "packages/${ENV_GROUP}/packages_${ENV_LC}.txt"         astro_project/packages.txt
             cp "requirements/${ENV_GROUP}/requirements_${ENV_LC}.txt" astro_project/requirements.txt
