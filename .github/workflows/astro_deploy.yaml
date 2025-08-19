@@ -1,0 +1,70 @@
+name: Astronomer CI - Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "dev | qa | uat | prod"
+        required: true
+      deploy_type:
+        description: "dags_only or image_and_dags"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ENV: ${{ inputs.env }}
+      DEPLOY_TYPE: ${{ inputs.deploy_type }}
+      ASTRO_API_TOKEN: ${{ secrets[format('ASTRO_API_TOKEN_{0}', upper(inputs.env))] }}
+      ASTRO_DEPLOYMENT_ID: ${{ vars[format('ASTRO_DEPLOYMENT_ID_{0}', upper(inputs.env))] }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq + yq (python)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          python3 -m pip install --upgrade pip
+          pip install yq
+
+      - name: Build astro_project
+        run: |
+          set -e
+          if [[ "$ENV" == "dev" || "$ENV" == "qa" ]]; then ENV_GROUP="non-prod"; else ENV_GROUP="prod"; fi
+          rm -rf astro_project && mkdir -p astro_project
+
+          # dags
+          DAGS_MANIFEST="dags/dags_environment/${ENV_GROUP}/dags_${ENV}.yaml"
+          mkdir -p astro_project/dags
+          yq e '.[]' "$DAGS_MANIFEST" | while IFS= read -r f; do cp "$f" astro_project/dags/; done
+
+          # include
+          INCLUDE_MANIFEST="include/include_environment/${ENV_GROUP}/include_${ENV}.yaml"
+          mkdir -p astro_project/include
+          yq e '.[]' "$INCLUDE_MANIFEST" | while IFS= read -r pkg; do cp -r "include/$pkg" astro_project/include/; done
+
+          # plugins
+          PLUGINS_MANIFEST="plugins/plugins_environment/${ENV_GROUP}/plugins_${ENV}.yaml"
+          mkdir -p astro_project/plugins
+          yq e '.[]' "$PLUGINS_MANIFEST" | while IFS= read -r plg; do cp -r "plugins/$plg" astro_project/plugins/; done
+
+          # dockerfile / packages / requirements (only for FULL_DEPLOY)
+          if [[ "$DEPLOY_TYPE" == "FULL_DEPLOY" ]]; then
+            cp "dockerfiles/${ENV_GROUP}/Dockerfile_${ENV}"        astro_project/Dockerfile
+            cp "packages/${ENV_GROUP}/packages_${ENV}.txt"         astro_project/packages.txt
+            cp "requirements/${ENV_GROUP}/requirements_${ENV}.txt" astro_project/requirements.txt
+          fi
+
+          # .astro (always needed)
+          if [ -d ".astro" ]; then cp -r .astro astro_project/.astro; else mkdir -p astro_project/.astro; fi
+
+      - name: Deploy to Astro
+        uses: astronomer/deploy-action@v0.10.1
+        with:
+          deployment-id: ${{ env.ASTRO_DEPLOYMENT_ID }}
+          working-directory: astro_project
+          deploy-type: ${{ env.DEPLOY_TYPE }}
+        env:
+          ASTRO_API_TOKEN: ${{ env.ASTRO_API_TOKEN }}
