@@ -1,4 +1,4 @@
-name: Astronomer CI - DEV Auto Deploy
+name: Astronomer CI - DEV Auto Deploy (Simple)
 
 on:
   push:
@@ -6,17 +6,11 @@ on:
     paths:
       - 'astronomer/**'
 
-env:
-  CONFIG_PATH: astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     steps:
-      - name: Checkout (full)
+      - name: Checkout (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,36 +20,40 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Paths filter (dags + config)
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filters: |
-            dags_changed:
-              - 'astronomer/dags/**'
-            config_changed:
-              - 'astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml'
-
       - name: Decide deploy type
         id: decide
+        env:
+          CONFIG_PATH: astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml
         run: |
           set -euo pipefail
-          DEPLOY_TYPE="image-and-dags"
 
-          if [[ "${{ steps.filter.outputs.dags_changed }}" == "true" ]]; then
+          # Figure out a safe base commit for the diff
+          BASE="${{ github.event.before }}"
+          if [[ -z "${BASE}" || "${BASE}" == "0000000000000000000000000000000000000000" ]]; then
+            # first push on branch (or squash); fall back to previous commit if exists
+            if git rev-parse HEAD^ >/dev/null 2>&1; then
+              BASE="$(git rev-parse HEAD^)"
+            else
+              BASE="$(git rev-list --max-parents=0 HEAD)"
+            fi
+          fi
+
+          # 1) If any DAG file changed -> dags-only
+          if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -q '^astronomer/dags/'; then
             DEPLOY_TYPE="dags-only"
-          elif [[ "${{ steps.filter.outputs.config_changed }}" == "true" ]]; then
-            python -m pip install --upgrade pip >/dev/null
-            python -m pip install PyYAML >/dev/null
-            python - <<'PY' > /tmp/dep_type.txt
-import os, yaml, subprocess
+          else
+            # 2) Otherwise, if config changed, diff only the 'dags:' list
+            if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -q '^astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml$'; then
+              python -m pip install --upgrade pip >/dev/null
+              python -m pip install PyYAML >/dev/null
+              python - <<'PY' > /tmp/dep_type.txt
+import os, sys, yaml, subprocess
 cfg = os.environ["CONFIG_PATH"]
 
 def load_rev(path, rev=None):
     if rev:
         try:
-            txt = subprocess.check_output(["git","show",f"{rev}:{path}"], text=True)
+            txt = subprocess.check_output(["git","show", f"{rev}:{path}"], text=True)
             return yaml.safe_load(txt) or {}
         except subprocess.CalledProcessError:
             return {}
@@ -63,22 +61,19 @@ def load_rev(path, rev=None):
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
 
-baseline = "HEAD^"
-try:
-    subprocess.check_call(["git","rev-parse", baseline], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-except subprocess.CalledProcessError:
-    baseline = None
-
-head = load_rev(cfg, None)
-prev = load_rev(cfg, baseline) if baseline else {}
-
-dags_changed = (head.get("dags") or []) != (prev.get("dags") or [])
+base = os.environ.get("BASE")
+head_cfg = load_rev(cfg, None)
+base_cfg = load_rev(cfg, base) if base else {}
+dags_changed = (head_cfg.get("dags") or []) != (base_cfg.get("dags") or [])
 print("dags-only" if dags_changed else "image-and-dags")
 PY
-            DEPLOY_TYPE="$(cat /tmp/dep_type.txt)"
+              DEPLOY_TYPE="$(cat /tmp/dep_type.txt)"
+            else
+              DEPLOY_TYPE="image-and-dags"
+            fi
           fi
 
-          echo "DEPLOY_TYPE=$DEPLOY_TYPE" | tee -a "$GITHUB_ENV"
+          echo "DEPLOY_TYPE=$DEPLOY_TYPE" >> "$GITHUB_ENV"
           echo "Will deploy: $DEPLOY_TYPE"
 
       - name: Normalize line endings & make script executable
