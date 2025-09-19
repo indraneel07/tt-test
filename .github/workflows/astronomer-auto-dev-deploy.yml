@@ -1,4 +1,4 @@
-name: Astronomer CI - DEV Auto Deploy (Simple)
+name: Astronomer CI - DEV Auto Deploy
 
 on:
   push:

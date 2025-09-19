@@ -13,7 +13,7 @@ def lambda_test_dag():
         function_name="ttdna-int-astro-dummy-lambda",
         invocation_type="RequestResponse",
         log_type="Tail",
-        payload='{"key1": "value1", "key2": "value2", "key3": "value3"}',
+        payload='{"key1": "value1", "key2": "value2"}',
     )
 
 lambda_test_dag()
