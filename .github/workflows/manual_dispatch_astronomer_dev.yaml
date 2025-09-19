@@ -28,12 +28,15 @@ jobs:
         working-directory: astronomer
         run: ./build_astro_project.sh -e dev
 
-      - name: Deploy to Astro (DEV)
-        uses: astronomer/deploy-action@v0.10.1
-        with:
-          deployment-id: ${{ vars.ASTRO_DEPLOYMENT_ID_DEV }}
-          root-folder: astronomer/astro_project/
-          deploy-type: ${{ inputs.deploy_type }}
-          force: true
+      - name: Deploy via Astro CLI (DEV)
+        working-directory: astronomer/astro_project
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN_DEV }}
+        run: |
+          set -euo pipefail
+          DEPLOY_ID="${{ vars.ASTRO_DEPLOYMENT_ID_DEV }}"
+          if [ "${{ env.DEPLOY_TYPE }}" = "dags-only" ]; then
+            astro deploy "$DEPLOY_ID" --dags --force
+          else
+            astro deploy "$DEPLOY_ID" --force
+          fi
