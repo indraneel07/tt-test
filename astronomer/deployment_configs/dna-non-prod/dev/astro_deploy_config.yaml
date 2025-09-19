@@ -8,7 +8,6 @@ dags:
   - dna_op_dag.py
   - dna_pc_dag.py
   - dna_scheduler_dag.py
-  - dna_data_load_dag.py
 
 include:
   - custom_email_notifier/
