@@ -1,0 +1,25 @@
+dags:
+  - dna_e3_dag.py
+  - dna_cy_dag.py
+  - dna_eq_dag.py
+  - dna_fl_dag.py
+  - dna_ft_dag.py
+  - dna_lp_dag.py
+  - dna_op_dag.py
+  - dna_pc_dag.py
+  - dna_scheduler_dag.py
+  - dna_data_load_dag.py
+
+include:
+  - custom_email_notifier/
+  - custom_operators/
+  - data_load_dag_utilities/
+  - measurement_dags_utilities/
+  - scheduler_dag_utilities/
+
+plugins: []
+
+other_files:
+  dockerfile: "Dockerfile.uat"
+  requirements: "requirements_uat.txt"
+  packages: "packages_uat.txt"

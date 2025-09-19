@@ -1,0 +1,197 @@
+{% macro fix_url(url) -%}
+  {% if url and '/dags/' not in url %}
+    {{ url.replace('dags/', '/dags/') }}
+  {% else %}
+    {{ url }}
+  {% endif %}
+{%- endmacro %}
+
+{% set is_success = (ti is defined and ti.state == "success") or (task_instance is defined and task_instance.state == "success") %}
+{% set status_text = "Succeeded" if is_success else "Failed" %}
+{% set brand_bg   = "#0F172A" %}
+{% set ok_bg      = "#16A34A" %}
+{% set err_bg     = "#DC2626" %}
+{% set pill_bg    = ok_bg if is_success else err_bg %}
+{% set text_muted = "#334155" %}
+{% set border     = "#E2E8F0" %}
+
+<!DOCTYPE html>
+<html>
+  <body style="Margin:0;padding:0;background:#F8FAFC;">
+    <!-- Outer wrapper (full width) -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#F8FAFC;">
+      <tr>
+        <td align="center" style="padding:16px;">
+          <!-- Card wrapper (fixed width) -->
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#FFFFFF;border:1px solid {{ border }};">
+            <!-- Header -->
+            <tr>
+              <td bgcolor="{{ brand_bg }}" style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:16px; color:#ffffff;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                  <tr>
+                    <td style="font-weight:bold; color:#ffffff;">AIRFLOW NOTIFICATION</td>
+                    <td align="right">
+                      <table role="presentation" cellpadding="4" cellspacing="0" style="border-collapse:collapse;">
+                        <tr>
+                          <td bgcolor="{{ pill_bg }}" style="font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#ffffff; font-weight:bold; text-align:center;">
+                            {{ status_text }}
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#CBD5E1; padding-top:6px;">
+                      DAG: <b style="color:#ffffff;">{{ dag.dag_id if dag is defined else dag_id }}</b>{% if ti is defined %} &nbsp;·&nbsp; Task: <b style="color:#ffffff;">{{ ti.task_id }}</b>{% endif %}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Spacer -->
+            <tr><td style="height:12px; line-height:12px; font-size:0;">&nbsp;</td></tr>
+
+            <!-- Title + time -->
+            <tr>
+              <td style="padding:0 20px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                  <tr>
+                    <td style="font-family:Arial, Helvetica, sans-serif; font-size:18px; color:#0F172A; font-weight:bold;">
+                      {{ dag_run.run_id if dag_run is defined else "Run" }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#475569; padding-top:4px;">
+                      {{ ts if ts is defined else logical_date }} (UTC)
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Spacer -->
+            <tr><td style="height:10px; line-height:10px; font-size:0;">&nbsp;</td></tr>
+
+            <!-- Key/Value table -->
+            <tr>
+              <td style="padding:0 20px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                  {% if ti is defined %}
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Task</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.task_id }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px; line-height:1px; font-size:0;"></td></tr>
+
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">State</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.state }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px; line-height:1px; font-size:0;"></td></tr>
+
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Try</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.try_number }} of {{ ti.max_tries + 1 }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Host</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.hostname }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Run ID</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.run_id }}</td>
+                    </tr>
+                    {% if ti.duration is defined %}
+                      <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                      <tr>
+                        <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Duration</td>
+                        <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ ti.duration }}s</td>
+                      </tr>
+                    {% endif %}
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+
+                    <tr>
+                      <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Log</td>
+                      <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">
+                        <a href="{{ fix_url(ti.log_url) }}" style="color:#0284C7; text-decoration:underline;">Open task logs</a>
+                      </td>
+                    </tr>
+
+                    {% if ti.mark_success_url is defined %}
+                      <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                      <tr>
+                        <td width="180" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Mark Success</td>
+                        <td valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">
+                          <a href="{{ fix_url(ti.mark_success_url) }}" style="color:#0284C7; text-decoration:underline;">Mark as success</a>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% elif slas is defined %}
+                    <tr>
+                      <td width="180" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">DAG</td>
+                      <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ dag.dag_id }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                    <tr>
+                      <td width="180" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Tasks</td>
+                      <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ task_list }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                    <tr>
+                      <td width="180" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Blocking Tasks</td>
+                      <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ blocking_task_list }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                    <tr>
+                      <td width="180" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">SLAs</td>
+                      <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ slas }}</td>
+                    </tr>
+                    <tr><td colspan="2" style="border-top:1px solid {{ border }}; height:1px;"></td></tr>
+                    <tr>
+                      <td width="180" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:{{ text_muted }}; padding:8px 0;">Blocking TIs</td>
+                      <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#0F172A; padding:8px 0;">{{ blocking_tis }}</td>
+                    </tr>
+                  {% endif %}
+                </table>
+              </td>
+            </tr>
+
+            <!-- Spacer -->
+            <tr><td style="height:16px; line-height:16px; font-size:0;">&nbsp;</td></tr>
+
+            <!-- Buttons (simple table-based) -->
+            <tr>
+              <td style="padding:0 20px 20px 20px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                  <tr>
+                    {% if ti is defined %}
+                      <td align="center" bgcolor="#0EA5E9" style="mso-padding-alt:0; padding:0;">
+                        <a href="{{ fix_url(ti.log_url) }}" style="display:inline-block; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:18px; color:#ffffff; text-decoration:none; padding:12px 16px;">View Logs</a>
+                      </td>
+                      {% if ti.mark_success_url is defined %}
+                        <td width="8" style="font-size:0; line-height:0;">&nbsp;</td>
+                        <td align="center" bgcolor="#FFFFFF" style="border:1px solid {{ border }}; mso-padding-alt:0; padding:0;">
+                          <a href="{{ fix_url(ti.mark_success_url) }}" style="display:inline-block; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:18px; color:#0F172A; text-decoration:none; padding:12px 16px;">Mark Success</a>
+                        </td>
+                      {% endif %}
+                    {% else %}
+                      <td align="center" bgcolor="#0EA5E9" style="mso-padding-alt:0; padding:0;">
+                        <a href="#" style="display:inline-block; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:18px; color:#ffffff; text-decoration:none; padding:12px 16px;">Open in UI</a>
+                      </td>
+                    {% endif %}
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          <!-- /card wrapper -->
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

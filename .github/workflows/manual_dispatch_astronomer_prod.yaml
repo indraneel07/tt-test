@@ -1,0 +1,39 @@
+name: Astronomer CI - PROD Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_type:
+        description: "dags-only | image-and-dags"
+        type: choice
+        required: true
+        options: [dags-only, image-and-dags]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make script executable (normalize line endings)
+        working-directory: astronomer
+        run: |
+          sed -i 's/\r$//' build_astro_project.sh
+          chmod +x build_astro_project.sh
+
+      - name: Build astro_project (PROD)
+        working-directory: astronomer
+        run: ./build_astro_project.sh -e prod
+
+      - name: Deploy to Astro (PROD)
+        uses: astronomer/deploy-action@v0.10.1
+        with:
+          deployment-id: ${{ vars.ASTRO_DEPLOYMENT_ID_PROD }}
+          root-folder: astronomer/astro_project/
+          deploy-type: ${{ inputs.deploy_type }}
+          force: true
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN_PROD }}

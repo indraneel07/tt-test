@@ -1,0 +1,102 @@
+name: Astronomer CI - DEV Auto Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'astronomer/**'
+
+env:
+  CONFIG_PATH: astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout (full)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Paths filter (dags + config)
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            dags_changed:
+              - 'astronomer/dags/**'
+            config_changed:
+              - 'astronomer/deployment_configs/dna-non-prod/dev/astro_deploy_config.yaml'
+
+      - name: Decide deploy type
+        id: decide
+        run: |
+          set -euo pipefail
+          DEPLOY_TYPE="image-and-dags"
+
+          if [[ "${{ steps.filter.outputs.dags_changed }}" == "true" ]]; then
+            DEPLOY_TYPE="dags-only"
+          elif [[ "${{ steps.filter.outputs.config_changed }}" == "true" ]]; then
+            python -m pip install --upgrade pip >/dev/null
+            python -m pip install PyYAML >/dev/null
+            python - <<'PY' > /tmp/dep_type.txt
+import os, yaml, subprocess
+cfg = os.environ["CONFIG_PATH"]
+
+def load_rev(path, rev=None):
+    if rev:
+        try:
+            txt = subprocess.check_output(["git","show",f"{rev}:{path}"], text=True)
+            return yaml.safe_load(txt) or {}
+        except subprocess.CalledProcessError:
+            return {}
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+
+baseline = "HEAD^"
+try:
+    subprocess.check_call(["git","rev-parse", baseline], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+except subprocess.CalledProcessError:
+    baseline = None
+
+head = load_rev(cfg, None)
+prev = load_rev(cfg, baseline) if baseline else {}
+
+dags_changed = (head.get("dags") or []) != (prev.get("dags") or [])
+print("dags-only" if dags_changed else "image-and-dags")
+PY
+            DEPLOY_TYPE="$(cat /tmp/dep_type.txt)"
+          fi
+
+          echo "DEPLOY_TYPE=$DEPLOY_TYPE" | tee -a "$GITHUB_ENV"
+          echo "Will deploy: $DEPLOY_TYPE"
+
+      - name: Normalize line endings & make script executable
+        working-directory: astronomer
+        run: |
+          sed -i 's/\r$//' build_astro_project.sh
+          chmod +x build_astro_project.sh
+
+      - name: Build astro_project (DEV)
+        working-directory: astronomer
+        run: ./build_astro_project.sh -e dev
+
+      - name: Deploy to Astro (DEV)
+        uses: astronomer/deploy-action@v0.10.1
+        with:
+          deployment-id: ${{ vars.ASTRO_DEPLOYMENT_ID_DEV }}
+          root-folder: astronomer/astro_project/
+          deploy-type: ${{ env.DEPLOY_TYPE }}
+          force: true
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN_DEV }}
