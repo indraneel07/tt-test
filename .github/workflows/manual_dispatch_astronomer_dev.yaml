@@ -28,6 +28,9 @@ jobs:
         working-directory: astronomer
         run: ./build_astro_project.sh -e dev
 
+      - name: Install Astro CLI
+        run: curl -sSL install.astronomer.io | sudo bash -s -- v1.36.0
+        
       - name: Deploy via Astro CLI (DEV)
         working-directory: astronomer/astro_project
         env:
