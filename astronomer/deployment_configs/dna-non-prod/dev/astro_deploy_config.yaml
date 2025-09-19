@@ -12,7 +12,6 @@ dags:
 include:
   - custom_email_notifier/
   - custom_operators/
-  - data_load_dag_utilities/
   - measurement_dags_utilities/
   - scheduler_dag_utilities/
 
